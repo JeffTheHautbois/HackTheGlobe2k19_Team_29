@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Interactive maps for Django web apps</title>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v0.53.0/mapbox-gl.js"></script>
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v0.53.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        color: #404040;
+        font: 400 15px/22px "Source Sans Pro", "Helvetica Neue", Sans-serif;
+        margin: 0;
+        padding: 0;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      * {
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+      }
+
+      h1 {
+        font-size: 22px;
+        margin: 0;
+        font-weight: 400;
+        line-height: 20px;
+        padding: 20px 2px;
+      }
+
+      a {
+        color: #404040;
+        text-decoration: none;
+      }
+
+      a:hover {
+        color: #101010;
+      }
+
+      .sidebar {
+        position: absolute;
+        width: 33.3333%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        overflow: hidden;
+        border-right: 1px solid rgba(0, 0, 0, 0.25);
+      }
+
+      .pad2 {
+        padding: 20px;
+      }
+
+      .map {
+        position: absolute;
+        left: 33.3333%;
+        width: 66.6666%;
+        top: 0;
+        bottom: 0;
+      }
+
+      .heading {
+        background: #fff;
+        border-bottom: 1px solid #eee;
+        height: 60px;
+        line-height: 60px;
+        padding: 0 10px;
+      }
+
+      .listings {
+        height: 100%;
+        overflow: auto;
+        padding-bottom: 60px;
+      }
+
+      .listings .item {
+        display: block;
+        border-bottom: 1px solid #eee;
+        padding: 10px;
+        text-decoration: none;
+      }
+
+      .listings .item:last-child {
+        border-bottom: none;
+      }
+
+      .listings .item .title {
+        display: block;
+        color: #00c4a7;
+        font-weight: 700;
+      }
+
+      .listings .item .title small {
+        font-weight: 400;
+      }
+
+      .listings .item.active .title,
+      .listings .item .title:hover {
+        color: #00c4a7;
+      }
+
+      .listings .item.active {
+        background-color: #f8f8f8;
+      }
+
+      ::-webkit-scrollbar {
+        width: 3px;
+        height: 3px;
+        border-left: 0;
+        background: rgba(0, 0, 0, 0.1);
+      }
+
+      ::-webkit-scrollbar-track {
+        background: none;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #00c4a7;
+        border-radius: 0;
+      }
+
+      .clearfix {
+        display: block;
+      }
+
+      .clearfix::after {
+        content: ".";
+        display: block;
+        height: 0;
+        clear: both;
+        visibility: hidden;
+      }
+      /* Marker tweaks */
+      .mapboxgl-popup-close-button {
+        display: none;
+      }
+
+      .mapboxgl-popup-content {
+        font: 400 15px/22px "Source Sans Pro", "Helvetica Neue", Sans-serif;
+        padding: 0;
+        width: 180px;
+      }
+
+      .mapboxgl-popup-content-wrapper {
+        padding: 1%;
+      }
+
+      .mapboxgl-popup-content h3 {
+        background: #00c4a7;
+        color: #fff;
+        margin: 0;
+        display: block;
+        padding: 10px;
+        border-radius: 3px 3px 0 0;
+        font-weight: 700;
+        margin-top: -15px;
+      }
+
+      .mapboxgl-popup-content h4 {
+        margin: 0;
+        display: block;
+        padding: 10px;
+        font-weight: 400;
+      }
+
+      .mapboxgl-popup-content div {
+        padding: 10px;
+      }
+
+      .mapboxgl-container .leaflet-marker-icon {
+        cursor: pointer;
+      }
+
+      .mapboxgl-popup-anchor-top > .mapboxgl-popup-content {
+        margin-top: 15px;
+      }
+
+      .mapboxgl-popup-anchor-top > .mapboxgl-popup-tip {
+        border-bottom-color: #00c4a7;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sidebar">
+      <div class="heading">
+        <h1>Our locations</h1>
+      </div>
+      <div id="listings" class="listings"></div>
+    </div>
+    <div id="map" class="map pad2">Map</div>
+    <script>
+      mapboxgl.accessToken =
+        "pk.eyJ1IjoiamVmZnBlbmciLCJhIjoiY2p0YnppcTZvMHI3dDN5bDhnZGJmYTl3MSJ9.ed_AkRMblXOKMLV42YMvyg";
+      // This adds the map to your page
+      var map = new mapboxgl.Map({
+        // container id specified in the HTML
+        container: "map",
+        // style URL
+        style: "mapbox://styles/mapbox/light-v10",
+        // initial position in [lon, lat] format
+        center: [-81.2474, 42.984],
+        // initial zoom
+        zoom: 13
+      });
+
+      var stores = {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [-81.2532, 42.981]
+            },
+            properties: {
+              phoneFormatted: "(519) 234-7336",
+              phone: "5192347336",
+              address: "358 Ridout St N",
+              city: "London",
+              country: "Canada",
+              crossStreet: "at Ridout St N",
+              postalCode: "N6C 3Z5",
+              state: "Ontario",
+              produce: "Tomato (28) $0.49/lb"
+            }
+          },
+          {
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [-81.2564, 42.9862]
+            },
+            properties: {
+              phoneFormatted: "(519) 507-8357",
+              phone: "5195078357",
+              address: "531 Ridout St N",
+              city: "London",
+              country: "Canada",
+              crossStreet: "at Ridout St N",
+              postalCode: "N6A 2P8",
+              state: "Ontario",
+              produce: "Romain Lettuce (32) $1.29/lb"
+            }
+          },
+          {
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [-81.2311, 42.9896]
+            },
+            properties: {
+              phoneFormatted: "(519) 387-9338",
+              phone: "5193879338",
+              address: "630 Dundas St",
+              city: "London",
+              country: "Canada",
+              crossStreet: "at Dupont Circle",
+              postalCode: "N5W 2Y8",
+              state: "Ontario",
+              produce: "Cucumber (50) $0.89/lb"
+            }
+          },
+          {
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [-81.2403, 42.9746]
+            },
+            properties: {
+              phoneFormatted: "(519) 337-9338",
+              phone: "5193379338",
+              address: "71 Wellington St",
+              city: "London",
+              country: "Canada",
+              crossStreet: "at Welsley St",
+              postalCode: "N6B 2K4",
+              state: "Ontario",
+              produce: "Tomato (40) $0.49/lb"
+            }
+          },
+          {
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [-81.2416, 42.9839]
+            },
+            properties: {
+              phoneFormatted: "(519) 547-9338",
+              phone: "5195479338",
+              address: "349 Waterloo St",
+              city: "London",
+              country: "Canada",
+              crossStreet: "btwn 2nd & 3rd Sts. SE",
+              postalCode: "N6B 2N8",
+              state: "Ontario",
+              produce: "Iceberg Lettuce (12) $0.79/lb"
+            }
+          },
+          {
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [-81.2572, 42.9926]
+            },
+            properties: {
+              address: "104 Ann St",
+              city: "London",
+              country: "Canada",
+              postalCode: "N6A 5L8",
+              state: "Ontario",
+              produce: "Carrot (54) $0.99/lb"
+            }
+          },
+          {
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [-81.2102, 42.9773]
+            },
+            properties: {
+              phoneFormatted: "(519) 654-7336",
+              phone: "5196547336",
+              address: "103 Vauxhall St",
+              cc: "Canada",
+              city: "London",
+              country: "Canada",
+              postalCode: "N5Z 1B5",
+              state: "Ontario",
+              produce: "Cucumber (30) $0.89/lb"
+            }
+          },
+          {
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [-81.2418, 42.9649]
+            },
+            properties: {
+              phoneFormatted: "(519) 203-0082",
+              phone: "5192030082",
+              address: "182 Belgrave Ave",
+              city: "London",
+              country: "Canada",
+              crossStreet: "btw Explorer & Library",
+              postalCode: "N6C 4B9",
+              state: "Ontario",
+              produce: "Carrot (20) $0.99/lb"
+            }
+          },
+          {
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [-81.2781, 42.9881]
+            },
+            properties: {
+              phoneFormatted: "(519) 522-2016",
+              phone: "5195222016",
+              address: "314A Oxford St W",
+              city: "London",
+              country: "Canada",
+              crossStreet: "at N Randolph St.",
+              postalCode: "N6H 4N8",
+              state: "Ontario",
+              produce: "Romain Lettuce (31) $1.29/lb"
+            }
+          },
+          {
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [-81.2687, 42.9723]
+            },
+            properties: {
+              phoneFormatted: "(519) 642-9400",
+              phone: "5196429400",
+              address: "54 Duke St",
+              city: "London",
+              country: "Canada",
+              postalCode: "N6J 2X4",
+              state: "Ontario",
+              produce: "Tomato (52) $0.29/lb"
+            }
+          },
+          {
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [-81.2585, 42.9648]
+            },
+            properties: {
+              phoneFormatted: "(519) 386-1365",
+              phone: "5193861365",
+              address: "43 Langarth St E",
+              city: "London",
+              country: "Canada",
+              postalCode: "N6C 1Y9",
+              state: "Ontario",
+              produce: "Tomato (23) $0.39/lb"
+            }
+          },
+          {
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [-81.2305, 42.9943]
+            },
+            properties: {
+              phoneFormatted: "(519) 331-3355",
+              phone: "5193313355",
+              address: "700 Princess Ave",
+              city: "London",
+              country: "Canada",
+              crossStreet: "at 19th St",
+              postalCode: "N5W 3M3",
+              state: "Ontario",
+              produce: "Cucumber (37) $0.89/lb"
+            }
+          }
+        ]
+      };
+
+      function flyToStore(currentFeature) {
+        map.flyTo({
+          center: currentFeature.geometry.coordinates,
+          zoom: 15
+        });
+      }
+
+      function createPopUp(currentFeature) {
+        var popUps = document.getElementsByClassName("mapboxgl-popup");
+        // Check if there is already a popup on the map and if so, remove it
+        if (popUps[0]) popUps[0].remove();
+
+        var popup = new mapboxgl.Popup({ closeOnClick: false })
+          .setLngLat(currentFeature.geometry.coordinates)
+          .setHTML(
+            "<h3>Grower</h3>" +
+              "<h4>" +
+              currentFeature.properties.address +
+              // "<div>" +
+              // math.random() +
+              // "</div>" +
+              "</h4>" +
+              "<h4>" +
+              currentFeature.properties.produce +
+              "</h4>"
+          )
+          .addTo(map);
+      }
+
+      function buildLocationList(data) {
+        // Iterate through the list of stores
+        for (i = 0; i < data.features.length; i++) {
+          var currentFeature = data.features[i];
+          // Shorten data.feature.properties to `prop` so we're not
+          // writing this long form over and over again.
+          var prop = currentFeature.properties;
+          // Select the listing container in the HTML and append a div
+          // with the class 'item' for each store
+          var listings = document.getElementById("listings");
+          var listing = listings.appendChild(document.createElement("div"));
+          listing.className = "item";
+          listing.id = "listing-" + i;
+
+          // Create a new link with the class 'title' for each store
+          // and fill it with the store address
+          var link = listing.appendChild(document.createElement("a"));
+          link.href = "#";
+          link.className = "title";
+          link.dataPosition = i;
+          link.innerHTML = prop.address;
+
+          // Create a new div with the class 'details' for each store
+          // and fill it with the city and phone number
+          var details = listing.appendChild(document.createElement("div"));
+          details.innerHTML = prop.city;
+          if (prop.phone) {
+            details.innerHTML += " · " + prop.phoneFormatted;
+          }
+        }
+      }
+
+      map.on("load", function(e) {
+        // Add the data to your map as a layer
+        map.addLayer({
+          id: "locations",
+          type: "symbol",
+          // Add a GeoJSON source containing place coordinates and information.
+          source: {
+            type: "geojson",
+            data: stores
+          },
+          layout: {
+            "icon-image": "restaurant-15",
+            "icon-allow-overlap": true
+          }
+        });
+        buildLocationList(stores);
+        // Add an event listener for the links in the sidebar listing
+        link.addEventListener("click", function(e) {
+          // Update the currentFeature to the store associated with the clicked link
+          var clickedListing = data.features[this.dataPosition];
+          // 1. Fly to the point associated with the clicked link
+          flyToStore(clickedListing);
+          // 2. Close all other popups and display popup for clicked store
+          createPopUp(clickedListing);
+          // 3. Highlight listing in sidebar (and remove highlight for all other listings)
+          var activeItem = document.getElementsByClassName("active");
+          if (activeItem[0]) {
+            activeItem[0].classList.remove("active");
+          }
+          this.parentNode.classList.add("active");
+        });
+      });
+
+      // Add an event listener for when a user clicks on the map
+      map.on("click", function(e) {
+        // Query all the rendered points in the view
+        var features = map.queryRenderedFeatures(e.point, {
+          layers: ["locations"]
+        });
+        if (features.length) {
+          var clickedPoint = features[0];
+          // 1. Fly to the point
+          flyToStore(clickedPoint);
+          // 2. Close all other popups and display popup for clicked store
+          createPopUp(clickedPoint);
+          // 3. Highlight listing in sidebar (and remove highlight for all other listings)
+          var activeItem = document.getElementsByClassName("active");
+          if (activeItem[0]) {
+            activeItem[0].classList.remove("active");
+          }
+          // Find the index of the store.features that corresponds to the clickedPoint that fired the event listener
+          var selectedFeature = clickedPoint.properties.address;
+
+          for (var i = 0; i < stores.features.length; i++) {
+            if (stores.features[i].properties.address === selectedFeature) {
+              selectedFeatureIndex = i;
+            }
+          }
+          // Select the correct list item using the found index and add the active class
+          var listing = document.getElementById(
+            "listing-" + selectedFeatureIndex
+          );
+          listing.classList.add("active");
+        }
+      });
+    </script>
+  </body>
+</html>
